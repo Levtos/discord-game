@@ -2,6 +2,7 @@ import asyncio
 import logging
 import re
 
+import nextcord
 import validators
 from homeassistant import config_entries, core
 from homeassistant.components.sensor import SensorEntity
@@ -10,7 +11,20 @@ from homeassistant.helpers.entity import DeviceInfo
 from nextcord import ActivityType, Member, RawReactionActionEvent, User, VoiceState
 from nextcord.abc import GuildChannel
 
-from .const import CONF_CHANNELS, CONF_IMAGE_FORMAT, CONF_MEMBERS, DOMAIN
+from .const import (
+    CONF_CHANNELS,
+    CONF_ENABLE_REACTIONS,
+    CONF_ENABLE_SUB_SENSORS,
+    CONF_ENABLE_VOICE,
+    CONF_IMAGE_FORMAT,
+    CONF_LEAN_INTENTS,
+    CONF_MEMBERS,
+    DEFAULT_ENABLE_REACTIONS,
+    DEFAULT_ENABLE_SUB_SENSORS,
+    DEFAULT_ENABLE_VOICE,
+    DEFAULT_LEAN_INTENTS,
+    DOMAIN,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -29,12 +43,28 @@ async def async_setup_entry(
 ) -> None:
     """Setup sensors from a config entry created in the integrations UI."""
     config = hass.data[DOMAIN][config_entry.entry_id]
-    import nextcord
+    options = config_entry.options
 
     token = config.get(CONF_ACCESS_TOKEN)
-    image_format = config.get(CONF_IMAGE_FORMAT)
+    image_format = options.get(CONF_IMAGE_FORMAT, config.get(CONF_IMAGE_FORMAT))
+    enable_reactions = options.get(CONF_ENABLE_REACTIONS, DEFAULT_ENABLE_REACTIONS)
+    enable_voice = options.get(CONF_ENABLE_VOICE, DEFAULT_ENABLE_VOICE)
+    enable_sub_sensors = options.get(CONF_ENABLE_SUB_SENSORS, DEFAULT_ENABLE_SUB_SENSORS)
+    lean_intents = options.get(CONF_LEAN_INTENTS, DEFAULT_LEAN_INTENTS)
 
-    bot = nextcord.Client(loop=hass.loop, intents=nextcord.Intents.all())
+    if lean_intents:
+        intents = nextcord.Intents.none()
+        intents.guilds = True
+        intents.members = True
+        intents.presences = True
+        if enable_reactions:
+            intents.guild_reactions = True
+        if enable_voice:
+            intents.voice_states = True
+    else:
+        intents = nextcord.Intents.all()
+
+    bot = nextcord.Client(loop=hass.loop, intents=intents)
     await bot.login(token)
 
     async def async_stop_server(event):
@@ -131,39 +161,45 @@ async def async_setup_entry(
             await update_discord_entity_user(_watcher, after)
             notify_related_entities(_watcher)
 
-    @bot.event
-    async def on_voice_state_update(_member: Member, before: VoiceState, after: VoiceState):
-        _watcher = watchers.get(str(_member.id))
-        if _watcher is not None and after.channel is None and _watcher._state == "online":
-            if _watcher.hass is not None:
-                _watcher.async_schedule_update_ha_state(False)
-            notify_related_entities(_watcher)
+    if enable_voice:
+        @bot.event
+        async def on_voice_state_update(_member: Member, before: VoiceState, after: VoiceState):
+            _watcher = watchers.get(str(_member.id))
+            if _watcher is not None and after.channel is None and _watcher._state == "online":
+                if _watcher.hass is not None:
+                    _watcher.async_schedule_update_ha_state(False)
+                notify_related_entities(_watcher)
 
-    @bot.event
-    async def on_raw_reaction_add(payload: RawReactionActionEvent):
-        _chan = channels.get(str(payload.channel_id))
-        member: Member | None = payload.member
-        if _chan and member is not None:
-            _chan._state = member.display_name
-            _chan._last_user = member.display_name
-            if _chan.hass is not None:
-                _chan.async_schedule_update_ha_state(False)
+    if enable_reactions:
+        @bot.event
+        async def on_raw_reaction_add(payload: RawReactionActionEvent):
+            _chan = channels.get(str(payload.channel_id))
+            member: Member | None = payload.member
+            if _chan and member is not None:
+                _chan._state = member.display_name
+                _chan._last_user = member.display_name
+                if _chan.hass is not None:
+                    _chan.async_schedule_update_ha_state(False)
 
     watchers = {}
     for member in config.get(CONF_MEMBERS):
         if re.match(DISCORD_ID_PATTERN, str(member)):
             user = await bot.fetch_user(member)
             if user:
-                watcher = DiscordAsyncMemberState(hass, bot, user.name, user.global_name, user.id)
+                watcher = DiscordAsyncMemberState(
+                    hass, bot, user.name, user.global_name, user.id,
+                    with_sub_sensors=enable_sub_sensors,
+                )
                 watchers[str(watcher.userid)] = watcher
 
     channels = {}
-    for channel in config.get(CONF_CHANNELS):
-        if re.match(DISCORD_ID_PATTERN, str(channel)):
-            chan: GuildChannel = await bot.fetch_channel(channel)
-            if chan:
-                ch = DiscordAsyncReactionState(hass, bot, chan.name, chan.id)
-                channels[str(chan.id)] = ch
+    if enable_reactions:
+        for channel in config.get(CONF_CHANNELS, []) or []:
+            if re.match(DISCORD_ID_PATTERN, str(channel)):
+                chan: GuildChannel = await bot.fetch_channel(channel)
+                if chan:
+                    ch = DiscordAsyncReactionState(hass, bot, chan.name, chan.id)
+                    channels[str(chan.id)] = ch
 
     hass.data[DOMAIN][config_entry.entry_id]["watchers"] = watchers
 
@@ -175,7 +211,7 @@ async def async_setup_entry(
 
 
 class DiscordAsyncMemberState(SensorEntity):
-    def __init__(self, hass, client, member, user_name, userid):
+    def __init__(self, hass, client, member, user_name, userid, with_sub_sensors: bool = True):
         self.member = member
         self.userid = userid
         self.hass = hass
@@ -185,7 +221,11 @@ class DiscordAsyncMemberState(SensorEntity):
         self.game = None
         self.avatar_url = None
         self.entity_id = ENTITY_ID_FORMAT.format(self.userid)
-        self.sensors = {sensor_name: GenericSensor(sensor=self, attr=sensor_name) for sensor_name in SENSORS}
+        self.sensors = (
+            {sensor_name: GenericSensor(sensor=self, attr=sensor_name) for sensor_name in SENSORS}
+            if with_sub_sensors
+            else {}
+        )
         self.extra_entities = []
 
     @property

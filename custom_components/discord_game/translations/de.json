@@ -1,0 +1,72 @@
+{
+  "config": {
+    "error": {
+      "auth": "Der angegebene Discord-Bot-Token ist ungültig."
+    },
+    "abort": {
+      "auth": "Der gespeicherte Discord-Token ist nicht mehr gültig."
+    },
+    "step": {
+      "user": {
+        "data": {
+          "access_token": "Discord-Bot-Token",
+          "image_format": "Bildformat"
+        },
+        "description": "Gib deinen Discord-Bot-Token ein.\nWie du den Token erhältst, ist hier beschrieben: https://github.com/Levtos/discord_game",
+        "title": "Authentifizierung"
+      },
+      "members": {
+        "data": {
+          "members": "Discord-Benutzer (erforderlich)",
+          "channels": "Discord-Kanal (optional)"
+        },
+        "description": "Wähle die Discord-Benutzer und Kanäle aus, die du verfolgen möchtest",
+        "title": "Discord-Benutzer und Kanäle auswählen"
+      }
+    }
+  },
+  "options": {
+    "abort": {
+      "auth": "Der gespeicherte Discord-Token ist nicht mehr gültig.",
+      "transferred": "Eintrag entfernt. Füge die Integration auf dem Zielsystem mit dem kopierten Token neu hinzu.",
+      "transfer_cancelled": "Transfer abgebrochen."
+    },
+    "step": {
+      "init": {
+        "title": "Discord Game Optionen",
+        "menu_options": {
+          "features": "Funktionen",
+          "members": "Benutzer & Kanäle",
+          "transfer": "Token übertragen"
+        }
+      },
+      "features": {
+        "title": "Funktions-Schalter",
+        "description": "Deaktiviere optionale Funktionen, die du nicht brauchst. Der Status-/Game-Sensor und die Media-Player-Entität bleiben immer aktiv.",
+        "data": {
+          "enable_reactions": "Reaktions-Tracking (Sensor pro Kanal mit zuletzt reagiertem Nutzer)",
+          "enable_voice": "Voice-State-Listener (Refresh beim Verlassen)",
+          "enable_sub_sensors": "Sub-Sensoren (avatar_url, game, user_name)",
+          "lean_intents": "Nur die für aktivierte Funktionen nötigen Gateway-Intents verwenden",
+          "image_format": "Bildformat"
+        }
+      },
+      "members": {
+        "title": "Benutzer & Kanäle",
+        "description": "Passe an, welche Discord-Benutzer und Kanäle verfolgt werden.",
+        "data": {
+          "members": "Discord-Benutzer",
+          "channels": "Discord-Kanäle (Reaktionen)"
+        }
+      },
+      "transfer": {
+        "title": "Token übertragen",
+        "description": "Kopiere den Token unten in eine neue Home-Assistant-Installation und setze dann den Haken, um diesen Eintrag zu entfernen. Mit Abbrechen passiert nichts.",
+        "data": {
+          "displayed_token": "Aktueller Bot-Token",
+          "confirm_remove": "Ich habe den Token kopiert — diesen Eintrag entfernen"
+        }
+      }
+    }
+  }
+}

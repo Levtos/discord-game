@@ -2,10 +2,11 @@
   "domain": "discord_game",
   "name": "Discord Game",
   "codeowners": [
-    "@lordboos"
+    "@Levtos"
   ],
-  "version": "6.1.2",
-  "documentation": "https://github.com/LordBoos/discord_game",
+  "version": "6.2.0",
+  "documentation": "https://github.com/Levtos/discord_game",
+  "issue_tracker": "https://github.com/Levtos/discord_game/issues",
   "config_flow": true,
   "iot_class": "cloud_push",
   "integration_type": "service",
