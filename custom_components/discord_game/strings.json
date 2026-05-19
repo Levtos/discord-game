@@ -21,7 +21,49 @@
       "auth": "The auth token provided is not valid."
     },
     "abort": {
+      "auth": "Stored Discord token is no longer valid.",
       "error_connecting": "Failed to connect, check your Token and try again"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Discord Game options",
+        "menu_options": {
+          "features": "Features",
+          "members": "Users & channels",
+          "transfer": "Transfer token"
+        }
+      },
+      "features": {
+        "title": "Feature toggles",
+        "data": {
+          "enable_reactions": "Reaction tracking",
+          "enable_voice": "Voice state listener",
+          "enable_sub_sensors": "Sub-sensors",
+          "lean_intents": "Lean gateway intents",
+          "image_format": "Image format"
+        }
+      },
+      "members": {
+        "title": "Users & channels",
+        "data": {
+          "members": "Discord users",
+          "channels": "Discord channels"
+        }
+      },
+      "transfer": {
+        "title": "Transfer token",
+        "data": {
+          "displayed_token": "Current bot token",
+          "confirm_remove": "I have copied the token — remove this entry"
+        }
+      }
+    },
+    "abort": {
+      "auth": "Stored Discord token is no longer valid.",
+      "transferred": "Entry removed.",
+      "transfer_cancelled": "Transfer cancelled."
     }
   }
 }

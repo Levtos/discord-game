@@ -3,13 +3,16 @@
     "error": {
       "auth": "Provided Discord Bot access token is not valid."
     },
+    "abort": {
+      "auth": "Stored Discord token is no longer valid."
+    },
     "step": {
       "user": {
         "data": {
           "access_token": "Discord Bot access token",
           "image_format": "Image format"
         },
-        "description": "Enter your Discord bot access token.\nHow to obtain the token is described on https://github.com/LordBoos/discord_game",
+        "description": "Enter your Discord bot access token.\nHow to obtain the token is described on https://github.com/Levtos/discord_game",
         "title": "Authentication"
       },
       "members": {
@@ -19,6 +22,50 @@
         },
         "description": "Select Discord users and channels to track",
         "title": "Select Discord users and channels to track"
+      }
+    }
+  },
+  "options": {
+    "abort": {
+      "auth": "Stored Discord token is no longer valid.",
+      "transferred": "Entry removed. Add the integration again on the target system with the copied token.",
+      "transfer_cancelled": "Transfer cancelled."
+    },
+    "step": {
+      "init": {
+        "title": "Discord Game options",
+        "menu_options": {
+          "features": "Features",
+          "members": "Users & channels",
+          "transfer": "Transfer token"
+        }
+      },
+      "features": {
+        "title": "Feature toggles",
+        "description": "Disable optional functionality you don't need. The main status / game sensor and the media player entity always stay active.",
+        "data": {
+          "enable_reactions": "Reaction tracking (per-channel last-reacted-by sensor)",
+          "enable_voice": "Voice state listener (refresh on leave)",
+          "enable_sub_sensors": "Sub-sensors (avatar_url, game, user_name)",
+          "lean_intents": "Use only the gateway intents required for the enabled features",
+          "image_format": "Image format"
+        }
+      },
+      "members": {
+        "title": "Users & channels",
+        "description": "Adjust which Discord users and channels are tracked.",
+        "data": {
+          "members": "Discord users",
+          "channels": "Discord channels (reactions)"
+        }
+      },
+      "transfer": {
+        "title": "Transfer token",
+        "description": "Copy the token below into a new Home Assistant installation, then tick the box to confirm removal of this entry. Cancel to abort without changes.",
+        "data": {
+          "displayed_token": "Current bot token",
+          "confirm_remove": "I have copied the token — remove this entry"
+        }
       }
     }
   }
