@@ -133,7 +133,10 @@ class DiscordGameOptionsFlow(config_entries.OptionsFlow):
     """Options menu: feature toggles, member/channel re-selection, token transfer."""
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        self.config_entry = config_entry
+        # NOTE: do not assign self.config_entry — in HA 2024.12+ it is a
+        # read-only property injected by the framework. Writing it raises
+        # AttributeError, which surfaces in the UI as a 500 when opening
+        # the options dialog.
         self._members: dict = {}
         self._channels: dict = {}
 
