@@ -4,7 +4,7 @@
   "codeowners": [
     "@Levtos"
   ],
-  "version": "6.2.0",
+  "version": "6.2.1",
   "documentation": "https://github.com/Levtos/discord_game",
   "issue_tracker": "https://github.com/Levtos/discord_game/issues",
   "config_flow": true,
