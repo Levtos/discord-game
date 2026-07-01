@@ -1,9 +1,13 @@
 """Component to integrate with Discord and get information about users online and game status."""
 import warnings
 
-# nextcord uses 'return' in 'finally' blocks intentionally (noqa: B012).
-# Python 3.14 promotes this to SyntaxWarning; suppress it before the first import.
-warnings.filterwarnings("ignore", category=SyntaxWarning, module="nextcord.*")
+# Older nextcord builds used 'return' in 'finally' blocks. Python 3.14 emits
+# that as a SyntaxWarning during import, before normal logging can classify it.
+warnings.filterwarnings(
+    "ignore",
+    message=r"'return' in a 'finally' block",
+    category=SyntaxWarning,
+)
 
 from homeassistant import config_entries, core
 from homeassistant.const import Platform
