@@ -12,7 +12,7 @@
           "access_token": "Discord-Bot-Token",
           "image_format": "Bildformat"
         },
-        "description": "Gib deinen Discord-Bot-Token ein.\nWie du den Token erhältst, ist hier beschrieben: https://github.com/Levtos/discord_game",
+        "description": "Gib deinen Discord-Bot-Token ein.\nWie du den Token erhältst, ist hier beschrieben: https://github.com/Levtos/discord-game",
         "title": "Authentifizierung"
       },
       "members": {

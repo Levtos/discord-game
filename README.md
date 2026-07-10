@@ -1,5 +1,7 @@
 # Discord Game — Home Assistant Integration
 
+Repository: <https://github.com/Levtos/discord-game>
+
 Track Discord users' online status and currently played games directly in Home Assistant. For each monitored user the integration creates:
 
 - **Status sensor** — online / idle / dnd / offline
@@ -9,6 +11,8 @@ Track Discord users' online status and currently played games directly in Home A
 - **Media player entity** — reflects the active game as a playback source (state: playing / idle / off)
 
 All entities are grouped under one device per user. The user's avatar is used as the entity picture throughout.
+
+This repository is the independently maintained Levtos variant of the Discord Game Home Assistant integration. The `v1.0.0` release starts the standalone Levtos distribution line after the GitLab migration and fork-history archival.
 
 > Special thanks to the developers and contributors who originally conceived and built the foundation this integration is based on.
 
