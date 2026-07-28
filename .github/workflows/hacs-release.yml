@@ -1,0 +1,22 @@
+name: HACS stable release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Stable tag to verify
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    uses: Levtos/control/.github/workflows/hacs-stable-release.yml@main
+    with:
+      manifest_path: custom_components/discord_game/manifest.json
+      tag: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
