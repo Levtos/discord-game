@@ -55,7 +55,7 @@ The bot must be a member of the server where the users you want to track are act
 ## Notes
 
 - **Safari / iOS:** Set image format to `png` — Safari does not support `webp`
-- **Game artwork:** When Media Art Wrapper is installed, the game sensor and media player reuse its gaming chain (IGDB → SteamGridDB → Battle.net → Steam) by title; database artwork wins over an optional Discord Rich Presence asset. This covers known Blizzard titles such as Hearthstone without requiring Steam. Discord's large/small image is used as fallback when no game provider matches. Without the optional wrapper, Discord continues to work and only native activity artwork is used.
-- Install Media Art Wrapper `v3.2.1` through HACS to enable the shared game resolver; configure its Gaming options when IGDB or SteamGridDB credentials are available. Known Blizzard titles also have the no-key Battle.net fallback.
+- **Game artwork:** Discord Game resolves covers independently using IGDB → SteamGridDB → Battle.net → Steam. No additional Home Assistant integration is required. Known Blizzard titles such as Hearthstone and Overwatch use the no-key Battle.net fallback; Steam is also queried without a key. Discord's large/small Rich Presence image remains the final fallback.
+- Optional IGDB/Twitch credentials and a SteamGridDB API key can be entered under **Discord Game → Configure → Game artwork** to broaden coverage beyond the built-in no-key providers.
 - **Channel reactions:** Selecting a channel creates a sensor that shows the display name of the last user who added a reaction — useful for simple interaction tracking
 - **Shared token:** The bot token is compatible with Home Assistant's built-in Discord notification integration, so both functions can run under the same bot
