@@ -12,15 +12,18 @@ from homeassistant.helpers.entity import DeviceInfo
 from nextcord import ActivityType, Member, RawReactionActionEvent, User, VoiceState
 from nextcord.abc import GuildChannel
 
-from .artwork import MediaArtworkWrapperResolver, activity_image_url
+from .artwork import GameArtworkResolver, activity_image_url
 from .const import (
     CONF_CHANNELS,
     CONF_ENABLE_REACTIONS,
     CONF_ENABLE_SUB_SENSORS,
     CONF_ENABLE_VOICE,
     CONF_IMAGE_FORMAT,
+    CONF_IGDB_CLIENT_ID,
+    CONF_IGDB_CLIENT_SECRET,
     CONF_LEAN_INTENTS,
     CONF_MEMBERS,
+    CONF_STEAMGRIDDB_API_KEY,
     DEFAULT_ENABLE_REACTIONS,
     DEFAULT_ENABLE_SUB_SENSORS,
     DEFAULT_ENABLE_VOICE,
@@ -68,7 +71,12 @@ async def async_setup_entry(
 
     bot = nextcord.Client(loop=hass.loop, intents=intents)
     await bot.login(token)
-    artwork_resolver = MediaArtworkWrapperResolver(hass, async_get_clientsession(hass))
+    artwork_resolver = GameArtworkResolver(
+        async_get_clientsession(hass),
+        igdb_client_id=options.get(CONF_IGDB_CLIENT_ID, ""),
+        igdb_client_secret=options.get(CONF_IGDB_CLIENT_SECRET, ""),
+        steamgriddb_api_key=options.get(CONF_STEAMGRIDDB_API_KEY, ""),
+    )
 
     async def async_stop_server(event):
         await bot.close()
@@ -112,10 +120,7 @@ async def async_setup_entry(
         for activity in discord_member.activities:
             if activity.type == ActivityType.playing:
                 _watcher.game = activity.name
-                database_image_url = await artwork_resolver.async_resolve(
-                    activity.name,
-                    source_entity_id=f"media_player.discord_game_{_watcher.userid}",
-                )
+                database_image_url = await artwork_resolver.async_resolve(activity.name)
                 if activity_generation != _watcher._activity_generation:
                     return
                 # Canonical game artwork wins. Discord Rich Presence can still

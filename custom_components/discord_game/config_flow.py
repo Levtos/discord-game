@@ -1,3 +1,5 @@
+# ruff: noqa: E402
+
 import logging
 import warnings
 from typing import Any, Dict, Optional
@@ -26,8 +28,11 @@ from .const import (
     CONF_ENABLE_SUB_SENSORS,
     CONF_ENABLE_VOICE,
     CONF_IMAGE_FORMAT,
+    CONF_IGDB_CLIENT_ID,
+    CONF_IGDB_CLIENT_SECRET,
     CONF_LEAN_INTENTS,
     CONF_MEMBERS,
+    CONF_STEAMGRIDDB_API_KEY,
     DEFAULT_ENABLE_REACTIONS,
     DEFAULT_ENABLE_SUB_SENSORS,
     DEFAULT_ENABLE_VOICE,
@@ -147,13 +152,15 @@ class DiscordGameOptionsFlow(config_entries.OptionsFlow):
     async def async_step_init(self, user_input: Optional[Dict[str, Any]] = None):
         return self.async_show_menu(
             step_id="init",
-            menu_options=["features", "members", "transfer"],
+            menu_options=["features", "artwork", "members", "transfer"],
         )
 
     async def async_step_features(self, user_input: Optional[Dict[str, Any]] = None):
         current = {**self.config_entry.data, **self.config_entry.options}
         if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
+            options = dict(self.config_entry.options)
+            options.update(user_input)
+            return self.async_create_entry(title="", data=options)
 
         schema = vol.Schema(
             {
@@ -180,6 +187,38 @@ class DiscordGameOptionsFlow(config_entries.OptionsFlow):
             }
         )
         return self.async_show_form(step_id="features", data_schema=schema)
+
+    async def async_step_artwork(self, user_input: Optional[Dict[str, Any]] = None):
+        """Configure optional game-database credentials."""
+        current = {**self.config_entry.data, **self.config_entry.options}
+        if user_input is not None:
+            options = dict(self.config_entry.options)
+            options.update(user_input)
+            return self.async_create_entry(title="", data=options)
+
+        schema = vol.Schema(
+            {
+                vol.Optional(
+                    CONF_IGDB_CLIENT_ID,
+                    default=current.get(CONF_IGDB_CLIENT_ID, ""),
+                ): selector.TextSelector(
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
+                ),
+                vol.Optional(
+                    CONF_IGDB_CLIENT_SECRET,
+                    default=current.get(CONF_IGDB_CLIENT_SECRET, ""),
+                ): selector.TextSelector(
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
+                ),
+                vol.Optional(
+                    CONF_STEAMGRIDDB_API_KEY,
+                    default=current.get(CONF_STEAMGRIDDB_API_KEY, ""),
+                ): selector.TextSelector(
+                    selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
+                ),
+            }
+        )
+        return self.async_show_form(step_id="artwork", data_schema=schema)
 
     async def async_step_members(self, user_input: Optional[Dict[str, Any]] = None):
         errors: Dict[str, str] = {}

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.4
+
+- Moves the complete game-artwork resolver into Discord Game; Media Art Wrapper is no longer imported or required.
+- Resolves games through optional IGDB and SteamGridDB providers, then no-key Battle.net and Steam fallbacks.
+- Covers known Blizzard titles such as Hearthstone and Overwatch without Steam or another Home Assistant integration.
+- Adds positive/negative caching, concurrent-request coalescing, conservative title matching, and provider failure isolation.
+- Keeps Discord Rich Presence artwork as the final fallback.
+
 ## 1.0.3
 
 - Reuses the Media Art Wrapper's gaming provider chain instead of maintaining a Steam-only resolver in Discord Game.

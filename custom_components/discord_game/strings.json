@@ -31,6 +31,7 @@
         "title": "Discord Game options",
         "menu_options": {
           "features": "Features",
+          "artwork": "Game artwork",
           "members": "Users & channels",
           "transfer": "Transfer token"
         }
@@ -43,6 +44,15 @@
           "enable_sub_sensors": "Sub-sensors",
           "lean_intents": "Lean gateway intents",
           "image_format": "Image format"
+        }
+      },
+      "artwork": {
+        "title": "Game artwork",
+        "description": "Discord Game resolves artwork itself. IGDB and SteamGridDB credentials are optional; Battle.net and Steam fallbacks need no key.",
+        "data": {
+          "igdb_client_id": "IGDB / Twitch client ID",
+          "igdb_client_secret": "IGDB / Twitch client secret",
+          "steamgriddb_api_key": "SteamGridDB API key"
         }
       },
       "members": {

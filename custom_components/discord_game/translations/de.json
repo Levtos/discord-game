@@ -36,6 +36,7 @@
         "title": "Discord Game Optionen",
         "menu_options": {
           "features": "Funktionen",
+          "artwork": "Spiele-Artwork",
           "members": "Benutzer & Kanäle",
           "transfer": "Token übertragen"
         }
@@ -49,6 +50,15 @@
           "enable_sub_sensors": "Sub-Sensoren (avatar_url, game, user_name)",
           "lean_intents": "Nur die für aktivierte Funktionen nötigen Gateway-Intents verwenden",
           "image_format": "Bildformat"
+        }
+      },
+      "artwork": {
+        "title": "Spiele-Artwork",
+        "description": "Discord Game löst Artwork eigenständig auf. IGDB- und SteamGridDB-Zugangsdaten sind optional. Battle.net und Steam funktionieren ohne Schlüssel.",
+        "data": {
+          "igdb_client_id": "IGDB-/Twitch-Client-ID",
+          "igdb_client_secret": "IGDB-/Twitch-Client-Secret",
+          "steamgriddb_api_key": "SteamGridDB-API-Schlüssel"
         }
       },
       "members": {
