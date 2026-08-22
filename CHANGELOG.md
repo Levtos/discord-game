@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.3
+
+- Reuses the Media Art Wrapper's gaming provider chain instead of maintaining a Steam-only resolver in Discord Game.
+- Database artwork is preferred for game titles; Discord Rich Presence artwork remains a fallback.
+- The integration continues to work without Media Art Wrapper and leaves artwork empty when no source resolves.
+
 ## 1.0.2
 
 - Adds a cached Steam Store artwork fallback for playing activities without Discord Rich Presence assets.

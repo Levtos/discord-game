@@ -3,18 +3,13 @@
 from __future__ import annotations
 
 import asyncio
+import importlib
 import logging
 import re
-from collections.abc import Mapping
 from typing import Any
-from urllib.parse import urlencode
 
 
 _LOGGER = logging.getLogger(__name__)
-
-STEAM_STORE_SEARCH_URL = "https://store.steampowered.com/api/storesearch/"
-STEAM_APP_DETAILS_URL = "https://store.steampowered.com/api/appdetails"
-STEAM_REQUEST_TIMEOUT = 5.0
 
 
 _EXTERNAL_IMAGE_WITH_SIZE = re.compile(
@@ -60,67 +55,41 @@ def normalize_game_title(title: str | None) -> str:
     return re.sub(r"[^\w]+", " ", title, flags=re.UNICODE).strip()
 
 
-def _steam_title_score(query: str, candidate: str) -> int:
-    """Score a Steam result without accepting an unrelated title."""
-    query_key = normalize_game_title(query)
-    candidate_key = normalize_game_title(candidate)
-    if not query_key or not candidate_key:
-        return -1
-    if candidate_key == query_key:
-        return 100
-    if candidate_key.startswith(f"{query_key} "):
-        return 90
-    if query_key.startswith(f"{candidate_key} "):
-        return 80
-    if query_key in candidate_key or candidate_key in query_key:
-        return 60
-    return -1
+class MediaArtworkWrapperResolver:
+    """Reuse the Media Art Wrapper's configured game provider chain.
 
+    The import is intentionally lazy: Discord Game remains usable when the
+    optional wrapper integration is not installed, while an installed wrapper
+    remains the single owner of game-provider selection and caching.
+    """
 
-def _select_steam_result(game_name: str, items: Any) -> Mapping[str, Any] | None:
-    """Select the safest sufficiently matching Steam search result."""
-    if not isinstance(items, list):
-        return None
+    _MODULE = "custom_components.media_art_wrapper.game_artwork"
 
-    matches = [
-        (score, item)
-        for item in items
-        if isinstance(item, Mapping)
-        for score in [_steam_title_score(game_name, str(item.get("name", "")))]
-        if score >= 0
-    ]
-    if not matches:
-        return None
-    return max(matches, key=lambda match: match[0])[1]
-
-
-def _http_url(value: Any) -> str | None:
-    """Return an HTTP(S) URL from untrusted provider data."""
-    if isinstance(value, str) and value.startswith(("http://", "https://")):
-        return value
-    return None
-
-
-class SteamArtworkResolver:
-    """Resolve and cache game artwork through the public Steam Store API."""
-
-    def __init__(self, session: Any, timeout: float = STEAM_REQUEST_TIMEOUT) -> None:
+    def __init__(self, hass: Any, session: Any) -> None:
+        self._hass = hass
         self._session = session
-        self._timeout = timeout
-        self._cache: dict[str, str | None] = {}
-        self._inflight: dict[str, asyncio.Task[str | None]] = {}
+        self._cache: dict[tuple[str, str], str | None] = {}
+        self._inflight: dict[tuple[str, str], asyncio.Task[str | None]] = {}
 
-    async def async_resolve(self, game_name: str | None) -> str | None:
-        """Return cached artwork or resolve it once for a normalized title."""
-        cache_key = normalize_game_title(game_name)
-        if not cache_key:
+    async def async_resolve(
+        self,
+        game_name: str | None,
+        *,
+        source_entity_id: str | None = None,
+    ) -> str | None:
+        """Return database artwork for *game_name*, if the wrapper is available."""
+        title_key = normalize_game_title(game_name)
+        if not title_key:
             return None
+        cache_key = (source_entity_id or "", title_key)
         if cache_key in self._cache:
             return self._cache[cache_key]
 
         task = self._inflight.get(cache_key)
         if task is None:
-            task = asyncio.create_task(self._async_fetch(game_name or ""))
+            task = asyncio.create_task(
+                self._async_fetch(game_name or "", source_entity_id=source_entity_id)
+            )
             self._inflight[cache_key] = task
 
         try:
@@ -128,7 +97,7 @@ class SteamArtworkResolver:
         except asyncio.CancelledError:
             raise
         except Exception:
-            _LOGGER.debug("Steam artwork lookup failed for %s", cache_key, exc_info=True)
+            _LOGGER.debug("Media Art Wrapper game lookup failed for %s", title_key, exc_info=True)
             result = None
         finally:
             if self._inflight.get(cache_key) is task:
@@ -137,47 +106,26 @@ class SteamArtworkResolver:
         self._cache[cache_key] = result
         return result
 
-    async def _async_fetch(self, game_name: str) -> str | None:
-        search_payload = await self._async_get_json(
-            STEAM_STORE_SEARCH_URL,
-            {"term": game_name, "l": "english", "cc": "de"},
-        )
-        if not isinstance(search_payload, Mapping):
+    async def _async_fetch(
+        self,
+        game_name: str,
+        *,
+        source_entity_id: str | None,
+    ) -> str | None:
+        try:
+            module = importlib.import_module(self._MODULE)
+        except (ImportError, ModuleNotFoundError):
+            _LOGGER.debug("Media Art Wrapper is not installed; skipping game lookup")
             return None
 
-        result = _select_steam_result(game_name, search_payload.get("items"))
-        if result is None:
+        resolver = getattr(module, "async_resolve_game_artwork", None)
+        if not callable(resolver):
+            _LOGGER.debug("Media Art Wrapper has no game artwork bridge")
             return None
 
-        fallback_url = _http_url(result.get("tiny_image"))
-        app_id = result.get("id")
-        if not isinstance(app_id, (int, str)) or not str(app_id).isdigit():
-            return fallback_url
-
-        details_payload = await self._async_get_json(
-            STEAM_APP_DETAILS_URL,
-            {"appids": str(app_id), "l": "english"},
+        return await resolver(
+            self._hass,
+            self._session,
+            game_name,
+            source_entity_id=source_entity_id,
         )
-        if isinstance(details_payload, Mapping):
-            app_details = details_payload.get(str(app_id))
-            if isinstance(app_details, Mapping):
-                data = app_details.get("data")
-                if isinstance(data, Mapping):
-                    for field in (
-                        "library_capsule",
-                        "library_capsulev5",
-                        "header_image",
-                        "capsule_image",
-                    ):
-                        image_url = _http_url(data.get(field))
-                        if image_url:
-                            return image_url
-
-        return fallback_url
-
-    async def _async_get_json(self, url: str, params: Mapping[str, str]) -> Any:
-        query_url = f"{url}?{urlencode(params)}"
-        async with self._session.get(query_url, timeout=self._timeout) as response:
-            if response.status != 200:
-                return None
-            return await response.json(content_type=None)

@@ -12,7 +12,7 @@ from homeassistant.helpers.entity import DeviceInfo
 from nextcord import ActivityType, Member, RawReactionActionEvent, User, VoiceState
 from nextcord.abc import GuildChannel
 
-from .artwork import SteamArtworkResolver, activity_image_url
+from .artwork import MediaArtworkWrapperResolver, activity_image_url
 from .const import (
     CONF_CHANNELS,
     CONF_ENABLE_REACTIONS,
@@ -68,7 +68,7 @@ async def async_setup_entry(
 
     bot = nextcord.Client(loop=hass.loop, intents=intents)
     await bot.login(token)
-    artwork_resolver = SteamArtworkResolver(async_get_clientsession(hass))
+    artwork_resolver = MediaArtworkWrapperResolver(hass, async_get_clientsession(hass))
 
     async def async_stop_server(event):
         await bot.close()
@@ -112,11 +112,15 @@ async def async_setup_entry(
         for activity in discord_member.activities:
             if activity.type == ActivityType.playing:
                 _watcher.game = activity.name
-                _watcher.game_image_url = activity_image_url(activity)
-                if _watcher.game_image_url is None:
-                    _watcher.game_image_url = await artwork_resolver.async_resolve(activity.name)
-                    if activity_generation != _watcher._activity_generation:
-                        return
+                database_image_url = await artwork_resolver.async_resolve(
+                    activity.name,
+                    source_entity_id=f"media_player.discord_game_{_watcher.userid}",
+                )
+                if activity_generation != _watcher._activity_generation:
+                    return
+                # Canonical game artwork wins. Discord Rich Presence can still
+                # provide a useful app-specific image when no provider matches.
+                _watcher.game_image_url = database_image_url or activity_image_url(activity)
                 break
         if _watcher.hass is not None:
             _watcher.async_schedule_update_ha_state(False)
