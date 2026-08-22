@@ -7,11 +7,12 @@ import validators
 from homeassistant import config_entries, core
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.const import CONF_ACCESS_TOKEN, EVENT_HOMEASSISTANT_STOP
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity import DeviceInfo
 from nextcord import ActivityType, Member, RawReactionActionEvent, User, VoiceState
 from nextcord.abc import GuildChannel
 
-from .artwork import activity_image_url
+from .artwork import SteamArtworkResolver, activity_image_url
 from .const import (
     CONF_CHANNELS,
     CONF_ENABLE_REACTIONS,
@@ -67,6 +68,7 @@ async def async_setup_entry(
 
     bot = nextcord.Client(loop=hass.loop, intents=intents)
     await bot.login(token)
+    artwork_resolver = SteamArtworkResolver(async_get_clientsession(hass))
 
     async def async_stop_server(event):
         await bot.close()
@@ -101,6 +103,8 @@ async def async_setup_entry(
                 entity.async_schedule_update_ha_state(False)
 
     async def update_discord_entity(_watcher: "DiscordAsyncMemberState", discord_member: Member):
+        _watcher._activity_generation += 1
+        activity_generation = _watcher._activity_generation
         _watcher._state = str(discord_member.status)
         _watcher.display_name = discord_member.display_name
         _watcher.game = None
@@ -109,6 +113,10 @@ async def async_setup_entry(
             if activity.type == ActivityType.playing:
                 _watcher.game = activity.name
                 _watcher.game_image_url = activity_image_url(activity)
+                if _watcher.game_image_url is None:
+                    _watcher.game_image_url = await artwork_resolver.async_resolve(activity.name)
+                    if activity_generation != _watcher._activity_generation:
+                        return
                 break
         if _watcher.hass is not None:
             _watcher.async_schedule_update_ha_state(False)
@@ -223,6 +231,7 @@ class DiscordAsyncMemberState(SensorEntity):
         self.display_name = None
         self.game = None
         self.game_image_url = None
+        self._activity_generation = 0
         self.avatar_url = None
         self.entity_id = ENTITY_ID_FORMAT.format(self.userid)
         self.sensors = (

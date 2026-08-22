@@ -1,3 +1,4 @@
+import asyncio
 from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
 from types import SimpleNamespace
@@ -63,3 +64,98 @@ def test_normalizes_external_discord_asset_url_with_size():
 
 def test_returns_none_without_assets():
     assert _ARTWORK.activity_image_url(SimpleNamespace()) is None
+
+
+class _FakeResponse:
+    def __init__(self, status, payload):
+        self.status = status
+        self._payload = payload
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, traceback):
+        return None
+
+    async def json(self, **kwargs):
+        return self._payload
+
+
+class _FakeSession:
+    def __init__(self, responses):
+        self.responses = responses
+        self.calls = []
+
+    def get(self, url, **kwargs):
+        self.calls.append((url, kwargs))
+        if "storesearch" in url:
+            return _FakeResponse(200, self.responses["search"])
+        return _FakeResponse(*self.responses["details"])
+
+
+def test_steam_resolver_returns_header_and_caches_result():
+    session = _FakeSession(
+        {
+            "search": {
+                "items": [
+                    {
+                        "id": 2357570,
+                        "name": "Overwatch©",
+                        "tiny_image": "https://cdn.example/overwatch-small.jpg",
+                    }
+                ]
+            },
+            "details": (
+                200,
+                {
+                    "2357570": {
+                        "data": {
+                            "header_image": "https://cdn.example/overwatch-header.jpg"
+                        }
+                    }
+                },
+            ),
+        }
+    )
+    resolver = _ARTWORK.SteamArtworkResolver(session)
+
+    assert asyncio.run(resolver.async_resolve("Overwatch")) == (
+        "https://cdn.example/overwatch-header.jpg"
+    )
+    assert asyncio.run(resolver.async_resolve("OVERWATCH")) == (
+        "https://cdn.example/overwatch-header.jpg"
+    )
+    assert len(session.calls) == 2
+
+
+def test_steam_resolver_uses_search_thumbnail_when_details_fail():
+    session = _FakeSession(
+        {
+            "search": {
+                "items": [
+                    {
+                        "id": 123,
+                        "name": "Example Game",
+                        "tiny_image": "https://cdn.example/example.jpg",
+                    }
+                ]
+            },
+            "details": (503, None),
+        }
+    )
+
+    assert asyncio.run(_ARTWORK.SteamArtworkResolver(session).async_resolve("Example Game")) == (
+        "https://cdn.example/example.jpg"
+    )
+
+
+def test_steam_resolver_rejects_unrelated_search_result():
+    session = _FakeSession(
+        {
+            "search": {"items": [{"id": 123, "name": "Different Game"}]},
+            "details": (200, {}),
+        }
+    )
+
+    assert asyncio.run(_ARTWORK.SteamArtworkResolver(session).async_resolve("Overwatch")) is None
+    assert len(session.calls) == 1

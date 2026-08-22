@@ -55,6 +55,6 @@ The bot must be a member of the server where the users you want to track are act
 ## Notes
 
 - **Safari / iOS:** Set image format to `png` — Safari does not support `webp`
-- **Game artwork:** The game sensor and media player use the large image from Discord Rich Presence, with the small image as fallback. Games without a Discord-provided asset have no picture.
+- **Game artwork:** The game sensor and media player prefer the large image from Discord Rich Presence, with the small image as fallback. If Discord provides no asset, the integration uses the public Steam Store search by game title and caches the result in memory. No API key is required; games that are not found remain without a picture.
 - **Channel reactions:** Selecting a channel creates a sensor that shows the display name of the last user who added a reaction — useful for simple interaction tracking
 - **Shared token:** The bot token is compatible with Home Assistant's built-in Discord notification integration, so both functions can run under the same bot
