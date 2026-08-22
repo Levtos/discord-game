@@ -74,6 +74,14 @@ class DiscordGameMediaPlayer(MediaPlayerEntity):
         return MediaPlayerEntityFeature(0)
 
     @property
+    def media_image_url(self) -> str | None:
+        return self._watcher.game_image_url
+
+    @property
+    def media_image_remotely_accessible(self) -> bool:
+        return True
+
+    @property
     def device_info(self) -> DeviceInfo:
         return DeviceInfo(
             identifiers={(DOMAIN, str(self._watcher.userid))},

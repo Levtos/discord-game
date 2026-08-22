@@ -11,6 +11,7 @@ from homeassistant.helpers.entity import DeviceInfo
 from nextcord import ActivityType, Member, RawReactionActionEvent, User, VoiceState
 from nextcord.abc import GuildChannel
 
+from .artwork import activity_image_url
 from .const import (
     CONF_CHANNELS,
     CONF_ENABLE_REACTIONS,
@@ -103,9 +104,11 @@ async def async_setup_entry(
         _watcher._state = str(discord_member.status)
         _watcher.display_name = discord_member.display_name
         _watcher.game = None
+        _watcher.game_image_url = None
         for activity in discord_member.activities:
             if activity.type == ActivityType.playing:
                 _watcher.game = activity.name
+                _watcher.game_image_url = activity_image_url(activity)
                 break
         if _watcher.hass is not None:
             _watcher.async_schedule_update_ha_state(False)
@@ -219,6 +222,7 @@ class DiscordAsyncMemberState(SensorEntity):
         self.user_name = user_name or member
         self.display_name = None
         self.game = None
+        self.game_image_url = None
         self.avatar_url = None
         self.entity_id = ENTITY_ID_FORMAT.format(self.userid)
         self.sensors = (
@@ -259,6 +263,7 @@ class DiscordAsyncMemberState(SensorEntity):
             "user_name": self.user_name,
             "display_name": self.display_name,
             "game": self.game,
+            "game_image_url": self.game_image_url,
             "avatar_url": self.avatar_url,
         }
 
@@ -290,6 +295,8 @@ class GenericSensor(SensorEntity):
 
     @property
     def entity_picture(self):
+        if self.attr == "game":
+            return self.sensor.game_image_url
         attr = getattr(self.sensor, self.attr)
         if validators.url(attr):
             return attr
