@@ -1,4 +1,5 @@
 """Component to integrate with Discord and get information about users online and game status."""
+# ruff: noqa: E402
 import warnings
 
 # Older nextcord builds used 'return' in 'finally' blocks. Python 3.14 emits
@@ -18,6 +19,21 @@ from .const import DOMAIN, DATA_HASS_CONFIG
 PLATFORMS = [Platform.SENSOR, Platform.MEDIA_PLAYER]
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
+
+async def async_migrate_entry(hass, entry) -> bool:
+    """Discard retired artwork credentials without touching Discord settings."""
+    if entry.version > 2:
+        return False
+    if entry.version == 1:
+        retired = {"igdb_client_id", "igdb_client_secret", "steamgriddb_api_key"}
+        hass.config_entries.async_update_entry(
+            entry,
+            data={key: value for key, value in entry.data.items() if key not in retired},
+            options={key: value for key, value in entry.options.items() if key not in retired},
+            version=2,
+        )
+    return True
 
 
 async def async_setup_entry(

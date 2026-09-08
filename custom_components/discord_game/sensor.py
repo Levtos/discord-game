@@ -12,18 +12,15 @@ from homeassistant.helpers.entity import DeviceInfo
 from nextcord import ActivityType, Member, RawReactionActionEvent, User, VoiceState
 from nextcord.abc import GuildChannel
 
-from .artwork import GameArtworkResolver, activity_image_url
+from .artwork import GameArtworkResolver, async_update_activity_artwork
 from .const import (
     CONF_CHANNELS,
     CONF_ENABLE_REACTIONS,
     CONF_ENABLE_SUB_SENSORS,
     CONF_ENABLE_VOICE,
     CONF_IMAGE_FORMAT,
-    CONF_IGDB_CLIENT_ID,
-    CONF_IGDB_CLIENT_SECRET,
     CONF_LEAN_INTENTS,
     CONF_MEMBERS,
-    CONF_STEAMGRIDDB_API_KEY,
     DEFAULT_ENABLE_REACTIONS,
     DEFAULT_ENABLE_SUB_SENSORS,
     DEFAULT_ENABLE_VOICE,
@@ -73,10 +70,19 @@ async def async_setup_entry(
     await bot.login(token)
     artwork_resolver = GameArtworkResolver(
         async_get_clientsession(hass),
-        igdb_client_id=options.get(CONF_IGDB_CLIENT_ID, ""),
-        igdb_client_secret=options.get(CONF_IGDB_CLIENT_SECRET, ""),
-        steamgriddb_api_key=options.get(CONF_STEAMGRIDDB_API_KEY, ""),
+        local_directory=hass.config.path("www", "discord_game"),
+        executor=hass.async_add_executor_job,
     )
+    artwork_tasks: set[asyncio.Task] = set()
+
+    def stop_artwork():
+        for watcher in watchers.values():
+            watcher._activity_generation += 1
+        for task in artwork_tasks:
+            task.cancel()
+        artwork_resolver.close()
+
+    config_entry.async_on_unload(stop_artwork)
 
     async def async_stop_server(event):
         await bot.close()
@@ -115,17 +121,29 @@ async def async_setup_entry(
         activity_generation = _watcher._activity_generation
         _watcher._state = str(discord_member.status)
         _watcher.display_name = discord_member.display_name
+        previous_game = _watcher.game
+        previous_image = _watcher.game_image_url
         _watcher.game = None
         _watcher.game_image_url = None
         for activity in discord_member.activities:
             if activity.type == ActivityType.playing:
                 _watcher.game = activity.name
-                database_image_url = await artwork_resolver.async_resolve(activity.name)
-                if activity_generation != _watcher._activity_generation:
-                    return
-                # Canonical game artwork wins. Discord Rich Presence can still
-                # provide a useful app-specific image when no provider matches.
-                _watcher.game_image_url = database_image_url or activity_image_url(activity)
+                if activity.name == previous_game:
+                    _watcher.game_image_url = previous_image
+                def publish(watcher):
+                    if watcher.hass is not None:
+                        watcher.async_schedule_update_ha_state(False)
+                    notify_related_entities(watcher)
+
+                task = config_entry.async_create_background_task(
+                    hass,
+                    async_update_activity_artwork(
+                        _watcher, activity, artwork_resolver, activity_generation, publish
+                    ),
+                    "discord_game artwork",
+                )
+                artwork_tasks.add(task)
+                task.add_done_callback(artwork_tasks.discard)
                 break
         if _watcher.hass is not None:
             _watcher.async_schedule_update_ha_state(False)
@@ -152,7 +170,10 @@ async def async_setup_entry(
             if member is not None:
                 await update_discord_entity(_watcher, member)
             else:
+                _watcher._activity_generation += 1
                 _watcher._state = "offline"
+                _watcher.game = None
+                _watcher.game_image_url = None
                 if _watcher.hass is not None:
                     _watcher.async_schedule_update_ha_state(False)
             notify_related_entities(_watcher)

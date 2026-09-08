@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.5 — 2026-09-08
+
+- Simplify artwork to Steam → public PlayStation product metadata → local file → Discord asset.
+- Prefer current Steam Store headers and verified full-game IDs; add Overwatch/Anno aliases and reject DLC/demo/ambiguous matches.
+- Remove IGDB, SteamGridDB and Battle.net providers/credential UI; migrate old config-entry options safely.
+- Resolve artwork outside Presence events, preserve generation guards and cancel background artwork on unload.
+- Retain bounded URL caches/coalescing, handle cancelled waiters, and support user-owned local artwork without a new options UI.
+- Document #10: the stale update entity belongs to HACS; Discord Game does not create or force-refresh update entities. Historical caller remains unproven; live recheck remains open.
+- Installation, reload/restart and live artwork acceptance remain the user's gate.
+
 ## 1.0.4
 
 - Moves the complete game-artwork resolver into Discord Game; Media Art Wrapper is no longer imported or required.
