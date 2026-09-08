@@ -200,30 +200,32 @@ class GameArtworkResolver:
             if len(ids) != 1:
                 return None
             app_id = ids.pop()
-        details = await self._async_get_json(
-            STEAM_APP_DETAILS_URL, {"appids": app_id, "l": "english", "cc": "de"}
-        )
-        app = details.get(app_id) if isinstance(details, Mapping) else None
-        data = (
-            app.get("data")
-            if isinstance(app, Mapping) and app.get("success") is True
-            else None
-        )
-        if (
-            not isinstance(data, Mapping)
-            or data.get("type") != "game"
-            or str(data.get("steam_appid")) != app_id
-            or canonical_game_title(data.get("name")) != key
-        ):
-            self._steam_ids.pop(key, None)
-            return None
-        if len(self._steam_ids) >= MAX_CACHE_ENTRIES:
-            self._steam_ids.pop(next(iter(self._steam_ids)))
-        self._steam_ids[key] = app_id
-        # Current Store alt_assets headers win over static library art.
-        for field in ("header_image", "capsule_image", "capsule_imagev5"):
-            if image := _http_url(data.get(field)):
-                return image
+        for language in ("german", "english"):
+            details = await self._async_get_json(
+                STEAM_APP_DETAILS_URL,
+                {"appids": app_id, "l": language, "cc": "de"},
+            )
+            app = details.get(app_id) if isinstance(details, Mapping) else None
+            data = (
+                app.get("data")
+                if isinstance(app, Mapping) and app.get("success") is True
+                else None
+            )
+            if (
+                not isinstance(data, Mapping)
+                or data.get("type") != "game"
+                or str(data.get("steam_appid")) != app_id
+                or canonical_game_title(data.get("name")) != key
+            ):
+                continue
+            if len(self._steam_ids) >= MAX_CACHE_ENTRIES:
+                self._steam_ids.pop(next(iter(self._steam_ids)))
+            self._steam_ids[key] = app_id
+            # Current Store alt_assets headers win over static library art.
+            for field in ("header_image", "capsule_image", "capsule_imagev5"):
+                if image := _http_url(data.get(field)):
+                    return image
+        self._steam_ids.pop(key, None)
         return None
 
     async def _async_resolve_playstation(self, key):
